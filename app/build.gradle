@@ -1,0 +1,53 @@
+plugins {
+    id "com.android.application"
+}
+
+def signingStore = System.getenv("ATOTO_SIGNING_STORE")
+def signingStorePassword = System.getenv("ATOTO_SIGNING_STORE_PASSWORD")
+def signingKeyAlias = System.getenv("ATOTO_SIGNING_KEY_ALIAS")
+def signingKeyPassword = System.getenv("ATOTO_SIGNING_KEY_PASSWORD")
+def hasReleaseSigning = signingStore && signingStorePassword
+        && signingKeyAlias && signingKeyPassword
+
+android {
+    namespace "com.lrehmann.atoto.wifiadb"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.lrehmann.atoto.wifiadb"
+        minSdk 23
+        targetSdk 28
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    if (hasReleaseSigning) {
+        signingConfigs {
+            release {
+                storeFile file(signingStore)
+                storePassword signingStorePassword
+                keyAlias signingKeyAlias
+                keyPassword signingKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        disable "ExpiredTargetSdkVersion"
+        abortOnError true
+    }
+}
