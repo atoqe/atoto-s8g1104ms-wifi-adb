@@ -14,6 +14,12 @@ import android.os.RemoteException;
  * Minimal client for the FYT main-module system-property bridge found on the
  * tested ATOTO S8. This is vendor-specific and intentionally has no fallback
  * to root, boot-image patching, or shell privilege escalation.
+ *
+ * S8G1104MS note: checked against com.syu.ms 25.1119 from the S8G1104MS
+ * firmware (APP20251124 / System20251117). Main module 0 command 161 calls
+ * SystemProperties.set(strings[0], strings[1]), but only when both strings are
+ * non-empty, so a property cannot be cleared with "". The UI still reads the
+ * properties back after every request in case the unit runs other firmware.
  */
 final class FytAdbController implements ServiceConnection {
     interface Listener {
@@ -24,7 +30,9 @@ final class FytAdbController implements ServiceConnection {
     private enum Request {
         TEMPORARY,
         PERSISTENT,
-        DISABLE
+        DISABLE,
+        USB_DEBUGGING_AT_BOOT_ON,
+        USB_DEBUGGING_AT_BOOT_OFF
     }
 
     private static final String TOOLKIT_PACKAGE = "com.syu.ms";
@@ -56,6 +64,17 @@ final class FytAdbController implements ServiceConnection {
 
     void disablePersistent(Listener listener) {
         request(Request.DISABLE, listener);
+    }
+
+    /**
+     * Android 10's AdbService copies persist.sys.usb.config into the
+     * adb_enabled setting at boot. adb_enabled must be 1 for the RSA prompt to
+     * appear, so this is the fallback when the Developer options toggle will
+     * not stay on. Takes effect after a reboot.
+     */
+    void setUsbDebuggingAtBoot(boolean enabled, Listener listener) {
+        request(enabled ? Request.USB_DEBUGGING_AT_BOOT_ON
+                : Request.USB_DEBUGGING_AT_BOOT_OFF, listener);
     }
 
     boolean isToolkitServicePresent() {
@@ -135,9 +154,18 @@ final class FytAdbController implements ServiceConnection {
                     setProperty("service.adb.tcp.port", Integer.toString(ADB_PORT));
                     break;
                 case DISABLE:
-                    setProperty("persist.adb.tcp.port", "");
+                    // "" is ignored by command 161; adbd treats any port <= 0 as off.
+                    setProperty("persist.adb.tcp.port", "-1");
                     setProperty("service.adb.tcp.port", "-1");
                     break;
+                case USB_DEBUGGING_AT_BOOT_ON:
+                    setProperty("persist.sys.usb.config", "adb");
+                    succeed();
+                    return;
+                case USB_DEBUGGING_AT_BOOT_OFF:
+                    setProperty("persist.sys.usb.config", "none");
+                    succeed();
+                    return;
             }
             mainHandler.postDelayed(() -> {
                 try {

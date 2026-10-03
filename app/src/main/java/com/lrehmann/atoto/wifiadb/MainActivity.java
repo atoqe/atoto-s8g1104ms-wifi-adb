@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
@@ -20,7 +21,9 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -33,6 +36,32 @@ public final class MainActivity extends Activity {
     private static final int ADB_PORT = 5555;
     private static final int COLOR_ATOTO_BLUE = Color.rgb(20, 91, 150);
     private static final int COLOR_PANEL = Color.rgb(235, 239, 243);
+    private static final String TARGET_MODEL = "S8G1104MS";
+    private static final String TARGET_INCREMENTAL = "46117";
+    private static final String NOT_SUPPORTED_HINT =
+            " The FYT service accepted the request but the property did not change."
+                    + " Either this unit runs different firmware or Android refused that property."
+                    + " Do not keep retrying; note the firmware line above and stop here.";
+
+    /** Snapshot of everything the status panel shows, read off the UI thread. */
+    private static final class Status {
+        String address;
+        String servicePort;
+        String persistentPort;
+        String usbConfig;
+        boolean toolkitPresent;
+        boolean listening;
+        boolean adbEnabled;
+
+        boolean usbDebuggingAtBoot() {
+            return usbConfig != null && usbConfig.contains("adb");
+        }
+    }
+
+    /** Turns a post-request snapshot into the message shown in the status line. */
+    private interface Verdict {
+        String describe(Status status);
+    }
 
     private final ExecutorService statusExecutor = Executors.newSingleThreadExecutor();
     private FytAdbController controller;
@@ -42,8 +71,10 @@ public final class MainActivity extends Activity {
     private Button temporaryButton;
     private Button persistentButton;
     private Button disableButton;
+    private Button usbBootButton;
     private Button copyButton;
     private String currentAddress;
+    private boolean usbDebuggingAtBoot;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +111,7 @@ public final class MainActivity extends Activity {
                 ScrollView.LayoutParams.MATCH_PARENT,
                 ScrollView.LayoutParams.WRAP_CONTENT));
 
-        TextView title = text("ATOTO S8 Wi-Fi ADB", 30, Color.BLACK);
+        TextView title = text("ATOTO S8 Wi-Fi ADB (" + TARGET_MODEL + ")", 30, Color.BLACK);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         root.addView(title);
 
@@ -114,6 +145,10 @@ public final class MainActivity extends Activity {
         disableButton.setOnClickListener(v -> confirmDisable());
         addWithTopMargin(root, disableButton, 8);
 
+        usbBootButton = actionButton("TURN ON USB DEBUGGING AT BOOT");
+        usbBootButton.setOnClickListener(v -> confirmUsbDebuggingAtBoot());
+        addWithTopMargin(root, usbBootButton, 8);
+
         LinearLayout helperRow = new LinearLayout(this);
         helperRow.setOrientation(LinearLayout.HORIZONTAL);
         addWithTopMargin(root, helperRow, 8);
@@ -139,9 +174,9 @@ public final class MainActivity extends Activity {
     }
 
     private String buildCompatibilityText() {
-        return "TARGET: ATOTO S8 / FYT-based firmware\n"
-                + "Tested: S8G2A74MS, Android 10, incremental 33515\n"
-                + "This is not a universal Android wireless-debugging app.\n\n"
+        return "TARGET: ATOTO " + TARGET_MODEL + ", Android 10, incremental " + TARGET_INCREMENTAL + "\n"
+                + "Original method tested on S8G2A74MS, incremental 33515.\n"
+                + "Bridge checked against " + TARGET_MODEL + " firmware APP20251124; the app still verifies each result.\n\n"
                 + Build.MANUFACTURER + " " + Build.MODEL
                 + " | Android " + Build.VERSION.RELEASE
                 + " | " + Build.DISPLAY
@@ -155,6 +190,32 @@ public final class MainActivity extends Activity {
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Enable", (dialog, which) -> runRequest(true, false))
                 .show();
+    }
+
+    private void confirmUsbDebuggingAtBoot() {
+        boolean enable = !usbDebuggingAtBoot;
+        new AlertDialog.Builder(this)
+                .setTitle(enable ? "Turn on USB debugging at boot?" : "Turn off USB debugging at boot?")
+                .setMessage(enable
+                        ? "Use this only if Developer options > USB debugging will not stay on. It sets persist.sys.usb.config=adb; after a reboot Android turns USB debugging on, which is what makes the RSA prompt appear for Wi-Fi ADB."
+                        : "Sets persist.sys.usb.config back to the factory value (none). Takes effect after a reboot.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton(enable ? "Turn on" : "Turn off",
+                        (dialog, which) -> runUsbBootRequest(enable))
+                .show();
+    }
+
+    private void runUsbBootRequest(boolean enable) {
+        setActionButtonsEnabled(false);
+        statusText.setText("Requesting persist.sys.usb.config=" + (enable ? "adb" : "none") + "...");
+        controller.setUsbDebuggingAtBoot(enable, listener(false, status -> {
+            if (status.usbDebuggingAtBoot() == enable) {
+                return "Saved (persist.sys.usb.config=" + status.usbConfig
+                        + "). Reboot the head unit for it to take effect.";
+            }
+            return "FAILED: persist.sys.usb.config is still \""
+                    + emptyFallback(status.usbConfig, "empty") + "\"." + NOT_SUPPORTED_HINT;
+        }));
     }
 
     private void confirmDisable() {
@@ -174,17 +235,57 @@ public final class MainActivity extends Activity {
                 ? "Requesting persistent Wi-Fi ADB from the FYT service..."
                 : "Requesting temporary Wi-Fi ADB from the FYT service...");
 
-        FytAdbController.Listener listener = new FytAdbController.Listener() {
+        String port = Integer.toString(ADB_PORT);
+        Verdict verdict;
+        if (disable) {
+            verdict = status -> {
+                if (port.equals(status.persistentPort) || port.equals(status.servicePort)) {
+                    return "FAILED: ADB port properties are still " + ADB_PORT + "." + NOT_SUPPORTED_HINT;
+                }
+                return status.listening
+                        ? "Disable sent, but port " + ADB_PORT + " is still listening. Press REFRESH STATUS in a few seconds."
+                        : "Wi-Fi ADB is off, now and after reboot.";
+            };
+        } else {
+            verdict = status -> {
+                boolean portSet = port.equals(status.servicePort)
+                        && (!persistent || port.equals(status.persistentPort));
+                if (!portSet) {
+                    return "FAILED: ADB port properties did not change." + NOT_SUPPORTED_HINT;
+                }
+                if (!status.listening) {
+                    return "Port set to " + ADB_PORT + " but adbd is not listening yet."
+                            + " Press REFRESH STATUS in a few seconds.";
+                }
+                String ok = "Wi-Fi ADB is listening on port " + ADB_PORT + ". Run the adb connect command on the computer";
+                return status.adbEnabled
+                        ? ok + " and approve the RSA prompt here."
+                        : ok + ", but USB debugging is OFF, so the RSA prompt may not appear (adb shows"
+                        + " 'unauthorized'). Turn on Developer options > USB debugging, or use"
+                        + " TURN ON USB DEBUGGING AT BOOT and reboot.";
+            };
+        }
+
+        FytAdbController.Listener listener = listener(disable, verdict);
+        if (disable) {
+            controller.disablePersistent(listener);
+        } else if (persistent) {
+            controller.enablePersistent(listener);
+        } else {
+            controller.enableTemporary(listener);
+        }
+    }
+
+    /** Waits for adbd to restart, then reads everything back and reports the verdict. */
+    private FytAdbController.Listener listener(boolean disable, Verdict verdict) {
+        return new FytAdbController.Listener() {
             @Override
             public void onRequestSent() {
                 runOnUiThread(() -> {
                     statusText.setText(disable
-                            ? "Disable request sent; the connection should close."
-                            : "Request sent. Approve the computer RSA prompt on the head unit.");
-                    statusText.postDelayed(() -> {
-                        setActionButtonsEnabled(true);
-                        refreshStatus();
-                    }, 1200L);
+                            ? "Disable request sent; checking..."
+                            : "Request sent; checking the result...");
+                    statusText.postDelayed(() -> refreshStatus(verdict), 2500L);
                 });
             }
 
@@ -196,39 +297,55 @@ public final class MainActivity extends Activity {
                 });
             }
         };
-
-        if (disable) {
-            controller.disablePersistent(listener);
-        } else if (persistent) {
-            controller.enablePersistent(listener);
-        } else {
-            controller.enableTemporary(listener);
-        }
     }
 
     private void refreshStatus() {
+        refreshStatus(null);
+    }
+
+    private void refreshStatus(Verdict verdict) {
         statusExecutor.execute(() -> {
-            String address = findPreferredIpv4Address();
-            String servicePort = readAndroidProperty("service.adb.tcp.port");
-            String persistentPort = readAndroidProperty("persist.adb.tcp.port");
-            boolean toolkitPresent = controller.isToolkitServicePresent();
+            Status status = new Status();
+            status.address = findPreferredIpv4Address();
+            status.servicePort = readAndroidProperty("service.adb.tcp.port");
+            status.persistentPort = readAndroidProperty("persist.adb.tcp.port");
+            status.usbConfig = readAndroidProperty("persist.sys.usb.config");
+            status.toolkitPresent = controller.isToolkitServicePresent();
+            status.listening = isLocalPortListening(ADB_PORT);
+            status.adbEnabled = Settings.Global.getInt(
+                    getContentResolver(), Settings.Global.ADB_ENABLED, 0) == 1;
             String display = String.format(Locale.US,
                     "FYT ToolkitService: %s\n"
                             + "Head-unit IPv4: %s\n"
                             + "Current ADB TCP port: %s\n"
                             + "Persistent ADB TCP port: %s\n"
+                            + "adbd listening on %d: %s\n"
+                            + "Android USB debugging (adb_enabled): %s\n"
+                            + "USB debugging at boot (persist.sys.usb.config): %s\n"
                             + "Computer command: %s",
-                    toolkitPresent ? "FOUND" : "NOT FOUND",
-                    emptyFallback(address, "not found"),
-                    emptyFallback(servicePort, "not set"),
-                    emptyFallback(persistentPort, "not set"),
-                    TextUtils.isEmpty(address)
+                    status.toolkitPresent ? "FOUND" : "NOT FOUND",
+                    emptyFallback(status.address, "not found"),
+                    emptyFallback(status.servicePort, "not set"),
+                    emptyFallback(status.persistentPort, "not set"),
+                    ADB_PORT,
+                    status.listening ? "YES" : "NO",
+                    status.adbEnabled ? "ON" : "OFF",
+                    emptyFallback(status.usbConfig, "not set"),
+                    TextUtils.isEmpty(status.address)
                             ? "connect Wi-Fi first"
-                            : "adb connect " + address + ":" + ADB_PORT);
+                            : "adb connect " + status.address + ":" + ADB_PORT);
             runOnUiThread(() -> {
-                currentAddress = address;
+                currentAddress = status.address;
+                usbDebuggingAtBoot = status.usbDebuggingAtBoot();
                 connectionText.setText(display);
-                copyButton.setEnabled(!TextUtils.isEmpty(address));
+                copyButton.setEnabled(!TextUtils.isEmpty(status.address));
+                usbBootButton.setText(usbDebuggingAtBoot
+                        ? "TURN OFF USB DEBUGGING AT BOOT"
+                        : "TURN ON USB DEBUGGING AT BOOT");
+                if (verdict != null) {
+                    statusText.setText(verdict.describe(status));
+                    setActionButtonsEnabled(true);
+                }
             });
         });
     }
@@ -248,6 +365,7 @@ public final class MainActivity extends Activity {
         temporaryButton.setEnabled(enabled);
         persistentButton.setEnabled(enabled);
         disableButton.setEnabled(enabled);
+        usbBootButton.setEnabled(enabled);
     }
 
     private TextView panelText(int sizeSp) {
@@ -303,6 +421,15 @@ public final class MainActivity extends Activity {
             if (process != null) {
                 process.destroy();
             }
+        }
+    }
+
+    private static boolean isLocalPortListening(int port) {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("127.0.0.1", port), 500);
+            return true;
+        } catch (Exception ignored) {
+            return false;
         }
     }
 

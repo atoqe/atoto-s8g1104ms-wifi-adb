@@ -14,6 +14,29 @@ patched boot image, or a working USB ADB connection.
 > `QP1A.190711.020`, incremental `33515`.
 > It is not an official ATOTO tool and may not work on another S8 or firmware.
 
+## S8G1104MS variant (this copy)
+
+This copy is adapted for an ATOTO **S8G1104MS**. The FYT bridge was checked
+statically against `com.syu.ms` 25.1119 from the S8G1104MS firmware
+(APP20251124 / System20251117): toolkit transaction 1 returns module 0
+(`s0.i`), and its command 161 calls `SystemProperties.set(name, value)`, but
+only when both strings are non-empty.
+
+Changes from 1.0.0:
+
+- **Disable fix**: the persistent port is cleared with `-1`, not `""`. The
+  firmware silently ignores empty values, so 1.0.0's disable left
+  `persist.adb.tcp.port=5555` in place.
+- **Verified results**: after each request the app reads the properties back
+  and probes `127.0.0.1:5555`, then reports success or exactly what did not
+  apply (adds the `INTERNET` permission for that loopback probe only).
+- **USB debugging status**: shows `adb_enabled`. When it is off, Android never
+  shows the RSA prompt, so `adb` stays `unauthorized`.
+- **USB debugging at boot** fallback: sets `persist.sys.usb.config=adb` (or
+  back to `none`); Android 10 turns `adb_enabled` on from it at the next boot.
+- Build: AGP 9.4.1, Gradle 9.8.0, compileSdk 37, so it builds with the JDK
+  bundled in current Android Studio.
+
 ## Why Wi-Fi ADB?
 
 On our S8, neither accessible USB lead enumerated as an ADB device on the
