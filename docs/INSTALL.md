@@ -2,12 +2,12 @@
 
 ## What you need
 
-- An ATOTO S8 or closely related FYT head unit. The underlying method was
-  tested only on an S8G2A74MS running Android 10, build
-  `QP1A.190711.020`, incremental `33515`.
+- An ATOTO S8G1104MS (tested: Android 10, incremental `46117`) or a closely
+  related FYT head unit. The original method was tested on an S8G2A74MS
+  running Android 10, build `QP1A.190711.020`, incremental `33515`.
 - The head unit and computer on the same trusted Wi-Fi network.
 - Android SDK Platform Tools (`adb`) on the computer.
-- The APK from this repository's latest GitHub release.
+- `atoto-s8g1104ms-wifi-adb.apk` from this repository's latest GitHub release.
 
 USB debugging through the two accessible ATOTO USB leads did not enumerate as
 an ADB device in our setup. USB mode choices such as File Transfer, MIDI, PTP,
@@ -19,7 +19,7 @@ entirely from the head unit, followed by ADB over Wi-Fi.
 Choose one method:
 
 1. Open the latest GitHub release in the head-unit browser, download
-   `atoto-adb-via-wifi.apk`, and open it.
+   `atoto-s8g1104ms-wifi-adb.apk`, and open it.
 2. Copy the APK to removable storage and open it with the ATOTO file manager.
 3. If GitHub downloads are awkward on the head unit, serve the APK from a
    computer on the same LAN:
@@ -29,20 +29,27 @@ Choose one method:
    python3 -m http.server 8765
    ```
 
-   Then visit `http://COMPUTER_LAN_IP:8765/atoto-adb-via-wifi.apk` on the head
+   Then visit `http://COMPUTER_LAN_IP:8765/atoto-s8g1104ms-wifi-adb.apk` on the head
    unit. Replace `COMPUTER_LAN_IP`; do not type that placeholder literally.
 
 Android may ask you to allow installs from the browser or file manager. Enable
 that permission only for the installation, then turn it back off.
 
+If upstream's `ATOTO Wi-Fi ADB` 1.0.0 is installed, uninstall it first. Both
+use the package name `com.lrehmann.atoto.wifiadb` but are signed with
+different keys, so Android refuses to install one over the other.
+
 ## 2. Enable Wi-Fi ADB
 
 1. Connect the head unit to a trusted Wi-Fi network.
-2. Open **ATOTO Wi-Fi ADB**.
+2. Open **S8 Wi-Fi ADB (1104MS)**.
 3. Confirm that **FYT ToolkitService: FOUND** is displayed.
 4. Select **Enable persistent Wi-Fi ADB**. Use **Enable for this boot only** if
    you do not want the setting to survive a reboot.
-5. Note the IPv4 address shown by the app.
+5. Wait a few seconds for the status line. The app reads the properties back
+   and probes port 5555, then reports `Wi-Fi ADB is listening on port 5555`
+   or exactly what did not apply.
+6. Note the IPv4 address shown by the app.
 
 The button sends the FYT property requests and restarts `adbd`. It does not
 root the unit, patch a boot image, modify a firmware partition, or install a
@@ -82,8 +89,16 @@ change after a reboot; a DHCP reservation makes repeated development easier.
 
 ### `unauthorized`
 
-Unlock or foreground the head unit and approve the RSA prompt. If no prompt is
-visible, try:
+Unlock or foreground the head unit and approve the RSA prompt.
+
+The prompt only appears when Android's USB debugging is on, even for Wi-Fi
+ADB. Check `Android USB debugging (adb_enabled)` in the app. If it says `OFF`,
+turn on Developer options → USB debugging (tap Build number seven times to
+unlock Developer options). If that toggle will not stay on, tap **TURN ON USB
+DEBUGGING AT BOOT** and reboot; it sets `persist.sys.usb.config=adb`, which
+Android 10 copies into `adb_enabled` at boot.
+
+If USB debugging is on and no prompt is visible, try:
 
 ```sh
 adb disconnect HEAD_UNIT_IP:5555
@@ -94,6 +109,12 @@ adb connect HEAD_UNIT_IP:5555
 
 Do not delete an existing trusted ADB key unless you understand that every
 Android device previously paired with that key will ask again.
+
+### The app says `FAILED: ADB port properties did not change`
+
+The FYT service accepted the request but the property stayed the same: this
+firmware either ignores command 161 or refuses that property. Do not keep
+retrying. Report the firmware line shown at the top of the app.
 
 ### `FYT ToolkitService: NOT FOUND` or bind failure
 
@@ -120,6 +141,11 @@ Change `en0` to the interface that actually reaches the head unit.
 
 ## Disable it
 
-Open the app and press **Disable Wi-Fi ADB**. The active connection should
-close when `adbd` restarts. Reopen the app afterward to confirm that the
-persistent and current ports are no longer `5555`.
+Open the app and press **DISABLE WI-FI ADB**. The active connection closes when
+`adbd` restarts, and the app reports `Wi-Fi ADB is off, now and after reboot.`
+Both ports then read `-1`. (Upstream 1.0.0 tried to clear the persistent port
+with an empty value, which this firmware ignores, so ADB came back after the
+next reboot; this fork writes `-1`.)
+
+If you turned on USB debugging at boot, press **TURN OFF USB DEBUGGING AT
+BOOT** too.

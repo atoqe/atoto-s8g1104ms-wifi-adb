@@ -1,125 +1,141 @@
-# ATOTO S8 ADB via Wi-Fi
+# ATOTO S8G1104MS Wi-Fi ADB
 
-[![Android build](https://github.com/lrehmann/atoto-adb-via-wifi/actions/workflows/android.yml/badge.svg)](https://github.com/lrehmann/atoto-adb-via-wifi/actions/workflows/android.yml)
+[![Android build](https://github.com/atoqe/atoto-s8g1104ms-wifi-adb/actions/workflows/android.yml/badge.svg)](https://github.com/atoqe/atoto-s8g1104ms-wifi-adb/actions/workflows/android.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A small bootstrap app that enables legacy, RSA-protected Android Debug Bridge
-over Wi-Fi on a compatible ATOTO S8/FYT head unit. It uses the vendor FYT
-service already present in the firmware; it does **not** need root, Magisk, a
-patched boot image, or a working USB ADB connection.
+A small bootstrap app that turns on Android Debug Bridge (ADB) over Wi-Fi on an
+ATOTO **S8G1104MS** head unit. It asks the FYT vendor service that already
+ships in the firmware to open port 5555; it needs **no root, no Magisk, no
+patched boot image, and no working USB ADB**.
+
+This is a fork of [lrehmann/atoto-adb-via-wifi](https://github.com/lrehmann/atoto-adb-via-wifi),
+which found the method on an S8G2A74MS. This fork fixes the disable action,
+verifies every request on the unit, and is checked against the S8G1104MS
+firmware. All credit for the original technique goes to lrehmann.
 
 > [!WARNING]
-> This is experimental, vendor-specific software. The underlying method was
-> tested on one ATOTO S8G2A74MS running Android 10, build
-> `QP1A.190711.020`, incremental `33515`.
-> It is not an official ATOTO tool and may not work on another S8 or firmware.
+> Experimental, vendor-specific software. Not an official ATOTO tool. It uses
+> an undocumented FYT binder interface that a firmware update can change or
+> remove. ADB gives a paired computer full control of the head unit: read
+> [SECURITY.md](SECURITY.md) first.
 
-## S8G1104MS variant (this copy)
+## Tested on
 
-This copy is adapted for an ATOTO **S8G1104MS**. The FYT bridge was checked
-statically against `com.syu.ms` 25.1119 from the S8G1104MS firmware
-(APP20251124 / System20251117): toolkit transaction 1 returns module 0
-(`s0.i`), and its command 161 calls `SystemProperties.set(name, value)`, but
-only when both strings are non-empty.
+| Model | Android | Firmware | Result |
+| --- | --- | --- | --- |
+| S8G1104MS | 10 (API 29) | incremental `46117`, `com.syu.ms` 25.1119 (APP20251124 / System20251117) | Works (this fork) |
+| S8G2A74MS | 10 | `QP1A.190711.020`, incremental `33515` | Works (upstream 1.0.0) |
 
-Changes from 1.0.0:
-
-- **Disable fix**: the persistent port is cleared with `-1`, not `""`. The
-  firmware silently ignores empty values, so 1.0.0's disable left
-  `persist.adb.tcp.port=5555` in place.
-- **Verified results**: after each request the app reads the properties back
-  and probes `127.0.0.1:5555`, then reports success or exactly what did not
-  apply (adds the `INTERNET` permission for that loopback probe only).
-- **USB debugging status**: shows `adb_enabled`. When it is off, Android never
-  shows the RSA prompt, so `adb` stays `unauthorized`.
-- **USB debugging at boot** fallback: sets `persist.sys.usb.config=adb` (or
-  back to `none`); Android 10 turns `adb_enabled` on from it at the next boot.
-- Build: AGP 9.4.1, Gradle 9.8.0, compileSdk 37, so it builds with the JDK
-  bundled in current Android Studio.
-
-## Why Wi-Fi ADB?
-
-On our S8, neither accessible USB lead enumerated as an ADB device on the
-computer. Changing Android's default USB mode between File Transfer, USB
-tethering, MIDI, PTP, and No data transfer did not solve it. A manually
-installed helper APK could, however, ask the FYT system service to start `adbd`
-on TCP port 5555. That became the reliable bootstrap path.
+Other S8 models and FYT units may work: the app checks each step and tells you
+exactly what did not apply. Please report results (see [Compatibility reports](#compatibility-reports)).
 
 ## Quick start
 
-1. Download `atoto-adb-via-wifi.apk` from the
-   [latest release](https://github.com/lrehmann/atoto-adb-via-wifi/releases/latest).
-2. Install it directly on the head unit using its browser, file manager, or a
-   local HTTP server. No prior ADB connection is required.
-3. Put the computer and head unit on the same trusted Wi-Fi network.
-4. Open **ATOTO Wi-Fi ADB** and confirm `FYT ToolkitService: FOUND`.
-5. Press **Enable persistent Wi-Fi ADB** (or the current-boot option).
-6. On the computer, run:
+1. Download **`atoto-s8g1104ms-wifi-adb.apk`** from the
+   [latest release](https://github.com/atoqe/atoto-s8g1104ms-wifi-adb/releases/latest).
+2. Install it on the head unit from a USB stick (file manager), the head-unit
+   browser, or a local web server. No ADB connection is needed for this.
+3. Connect the head unit and your computer to the same trusted Wi-Fi network.
+4. Open **S8 Wi-Fi ADB (1104MS)** and check that it shows
+   `FYT ToolkitService: FOUND`.
+5. Tap **ENABLE PERSISTENT WI-FI ADB**. Wait for
+   `Wi-Fi ADB is listening on port 5555`.
+6. On the computer:
 
    ```sh
    adb connect HEAD_UNIT_IP:5555
    adb devices -l
    ```
 
-7. Approve the computer's RSA fingerprint on the head unit.
+7. Approve the RSA prompt on the head unit. `adb devices` should now say
+   `device`.
 
-See the [complete installation and troubleshooting guide](docs/INSTALL.md).
+Each step in more detail, with what the app shows: [docs/QUICKSTART.md](docs/QUICKSTART.md).
+Troubleshooting and the full guide: [docs/INSTALL.md](docs/INSTALL.md).
 
 ## What the app does
 
-- Binds to `com.syu.ms/app.ToolkitService` on compatible FYT firmware.
-- Requests port 5555 temporarily or persistently through FYT main-module
-  command 161.
-- Restarts `adbd` through the same vendor property bridge.
-- Shows the head unit's IPv4 address and current/persistent ADB properties.
-- Provides a disable action that clears the persistent port and restarts ADB.
+- Binds to `com.syu.ms/app.ToolkitService` and uses FYT main-module command 161
+  to set the ADB port properties, then restarts `adbd`.
+- **Persistent** (survives reboots), **this boot only**, and **disable**.
+- After every request it reads the properties back and probes
+  `127.0.0.1:5555`, then says either that it worked or exactly what did not
+  change.
+- Shows the head unit's IPv4 address, the current and persistent ADB ports,
+  whether `adbd` is listening, and whether USB debugging (`adb_enabled`) is on.
+- **USB debugging at boot**: a fallback for units where the Developer options
+  toggle will not stay on. Without USB debugging, Android never shows the RSA
+  prompt and `adb` stays `unauthorized`.
+- Copies the `adb connect` command to the clipboard.
 
-The app has no background service and makes no network requests. The APK ships
-without firmware blobs, vendor APKs, decompiled code, credentials, private
-keys, or unit-specific network addresses. Read the
-[technical notes](docs/TECHNICAL_NOTES.md) for the exact observed interface.
+No background service, no network requests (the only socket is the loopback
+probe), no analytics. The APK contains no firmware, vendor code, keys, or
+addresses.
 
-## Security
+## Changes from upstream 1.0.0
 
-ADB gives a trusted computer extensive access to the head unit. Use this only
-on a private network, never forward TCP port 5555 to the internet, approve only
-an RSA key you recognize, and disable persistent ADB when it is no longer
-needed. Read [SECURITY.md](SECURITY.md) before enabling it.
+- **Disable fix.** FYT command 161 silently ignores empty values, so 1.0.0's
+  disable left `persist.adb.tcp.port=5555` in place and ADB came back after
+  the next reboot. This fork clears it with `-1`.
+- **Verified results** instead of "request sent" (adds the `INTERNET`
+  permission, used only for the loopback probe).
+- **USB debugging status** and the **USB debugging at boot** fallback
+  (`persist.sys.usb.config=adb`, or back to `none`).
+- Builds with current Android Studio: AGP 9.4.1, Gradle 9.8.0, compileSdk 37.
+- App label `S8 Wi-Fi ADB (1104MS)`, version `1.1.0-s8g1104ms`.
+
+The package name stays `com.lrehmann.atoto.wifiadb`. Upstream release APKs are
+signed with a different key, so uninstall upstream 1.0.0 before installing
+this one (Android refuses to update across signing keys).
 
 ## Build from source
 
-Requirements: JDK 17 and an Android SDK containing API 35.
+Requirements: JDK 17 or newer (Android Studio's bundled JDK works) and the
+Android SDK with platform 37.
 
 ```sh
-git clone https://github.com/lrehmann/atoto-adb-via-wifi.git
-cd atoto-adb-via-wifi
+git clone https://github.com/atoqe/atoto-s8g1104ms-wifi-adb.git
+cd atoto-s8g1104ms-wifi-adb
 ./gradlew testDebugUnitTest lintDebug assembleDebug
 ```
 
-The debug APK will be written to
-`app/build/outputs/apk/debug/app-debug.apk`. Official release APKs are signed
-outside the repository; the signing keystore and credentials are not committed.
+The APK is written to
+`app/build/outputs/apk/debug/atoto-s8g1104ms-wifi-adb-debug.apk`. On macOS
+without a system JDK:
 
-## Helpful resources
+```sh
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew assembleDebug
+```
 
+Release signing reads `ATOTO_SIGNING_STORE`, `ATOTO_SIGNING_STORE_PASSWORD`,
+`ATOTO_SIGNING_KEY_ALIAS` and `ATOTO_SIGNING_KEY_PASSWORD` from the
+environment; no keystore is committed.
+
+## Compatibility reports
+
+Open an issue with the model, Android version, build display, and incremental
+shown at the top of the app, plus the status line after you pressed a button.
+Do not post serial numbers, Wi-Fi names, or passwords.
+
+## Documentation
+
+- [Quick start](docs/QUICKSTART.md)
+- [Install and troubleshooting guide](docs/INSTALL.md)
+- [Technical notes on the FYT interface](docs/TECHNICAL_NOTES.md)
+- [Security notes](SECURITY.md)
 - [Android Debug Bridge documentation](https://developer.android.com/tools/adb)
-- [Android SDK Platform Tools releases](https://developer.android.com/tools/releases/platform-tools)
-- [Detailed install/troubleshooting guide](docs/INSTALL.md)
-- [Technical FYT notes](docs/TECHNICAL_NOTES.md)
 
-## Provenance and disclosure
+## Provenance
 
-Much of the original investigation was hands-on trial and error on the target
-S8. The working bootstrap was iteratively developed and analyzed with extensive
-assistance from OpenAI GPT-5.5 and GPT-5.6. This public repository is a focused,
-sanitized rewrite of that work.
-
-That history is important: the FYT binder interface is observed behavior, not a
-documented public API. AI-assisted code and reverse-engineered behavior should
-be reviewed and independently tested. Please include exact model, Android
-version, build display, and incremental number in useful compatibility reports.
+The original technique and app are lrehmann's; their README describes that
+work as hands-on trial and error on an S8, developed with help from OpenAI
+GPT-5.5 and GPT-5.6. This fork's S8G1104MS changes were made with Claude
+(Anthropic) and checked against the S8G1104MS firmware's `com.syu.ms`. The FYT
+binder interface is observed behaviour, not a documented API: review the
+source and keep a recovery path.
 
 ## License and affiliation
 
-MIT licensed. Not affiliated with or endorsed by ATOTO, FYT, Google, or OpenAI.
+MIT, the same license as the original project; see [LICENSE](LICENSE). Not
+affiliated with or endorsed by ATOTO, FYT, Google, OpenAI, or Anthropic.
 Product and company names belong to their respective owners.

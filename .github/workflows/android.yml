@@ -18,7 +18,8 @@ jobs:
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+      - run: cp app/build/outputs/apk/debug/atoto-s8g1104ms-wifi-adb-debug.apk atoto-s8g1104ms-wifi-adb.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: atoto-adb-via-wifi-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: atoto-s8g1104ms-wifi-adb
+          path: atoto-s8g1104ms-wifi-adb.apk

@@ -2,6 +2,10 @@ plugins {
     id "com.android.application"
 }
 
+base {
+    archivesName = "atoto-s8g1104ms-wifi-adb"
+}
+
 def signingStore = System.getenv("ATOTO_SIGNING_STORE")
 def signingStorePassword = System.getenv("ATOTO_SIGNING_STORE_PASSWORD")
 def signingKeyAlias = System.getenv("ATOTO_SIGNING_KEY_ALIAS")
