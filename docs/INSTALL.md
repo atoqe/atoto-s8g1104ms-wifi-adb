@@ -71,6 +71,13 @@ change after a reboot; a DHCP reservation makes repeated development easier.
 
 ## Troubleshooting
 
+### Play Protect: `Unsafe app blocked`
+
+Google Play Protect blocks installing apps built for an older Android version.
+1.1.0 and 1.2.0 targeted Android 9 and can be blocked this way (`adb install`
+reports `INSTALL_FAILED_VERIFICATION_FAILURE`). Install 1.2.1 or later, which
+targets Android 10.
+
 ### `connection refused`
 
 - Reopen the app and press the enable button again.

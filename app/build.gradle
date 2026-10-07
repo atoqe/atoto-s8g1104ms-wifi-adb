@@ -20,9 +20,9 @@ android {
     defaultConfig {
         applicationId "com.atoqe.atoto.wifiadb"
         minSdk 23
-        targetSdk 28
-        versionCode 3
-        versionName "1.2.0-s8g1104ms"
+        targetSdk 29
+        versionCode 4
+        versionName "1.2.1-s8g1104ms"
     }
 
     if (hasReleaseSigning) {

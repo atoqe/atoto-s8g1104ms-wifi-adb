@@ -92,7 +92,9 @@ addresses.
 - Builds with current Android Studio: AGP 9.4.1, Gradle 9.8.0, compileSdk 37.
 - Own package name `com.atoqe.atoto.wifiadb` and a release signing key (from
   1.2.0), so it installs alongside upstream instead of clashing with it.
-- App label `S8 Wi-Fi ADB (1104MS)`, version `1.2.0-s8g1104ms`.
+- Targets Android 10 (API 29), the head unit's version, from 1.2.1. Google
+  Play Protect blocks installing apps that target older versions.
+- App label `S8 Wi-Fi ADB (1104MS)`, version `1.2.1-s8g1104ms`.
 
 Release 1.1.0 of this fork still used upstream's package name and a debug key.
 1.2.0 and later install as a separate app and update each other in place.
