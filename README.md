@@ -62,8 +62,11 @@ Pick whichever is easiest:
 Android asks to allow installs from that source. Allow it for this install,
 then turn it back off.
 
-If upstream's `ATOTO Wi-Fi ADB` 1.0.0 is installed, uninstall it first: the two
-share a package name but not a signing key.
+Upgrading from 1.1.0? Version 1.2.0 is a separate app (new package name and
+signing key), so 1.1.0 stays installed next to it. Uninstall the old
+`S8 Wi-Fi ADB (1104MS)` 1.1.0 (and upstream's `ATOTO Wi-Fi ADB`, if present)
+to avoid two look-alike icons. Uninstalling does not turn Wi-Fi ADB off: the
+setting lives in system properties, not in the app.
 
 ### 2. Turn on Wi-Fi ADB
 
@@ -160,11 +163,12 @@ addresses.
 - **USB debugging status** and the **USB debugging at boot** fallback
   (`persist.sys.usb.config=adb`, or back to `none`).
 - Builds with current Android Studio: AGP 9.4.1, Gradle 9.8.0, compileSdk 37.
-- App label `S8 Wi-Fi ADB (1104MS)`, version `1.1.0-s8g1104ms`.
+- Own package name `com.atoqe.atoto.wifiadb` and a release signing key (from
+  1.2.0), so it installs alongside upstream instead of clashing with it.
+- App label `S8 Wi-Fi ADB (1104MS)`, version `1.2.0-s8g1104ms`.
 
-The package name stays `com.lrehmann.atoto.wifiadb`. Upstream release APKs are
-signed with a different key, so uninstall upstream 1.0.0 before installing
-this one (Android refuses to update across signing keys).
+Release 1.1.0 of this fork still used upstream's package name and a debug key.
+1.2.0 and later install as a separate app and update each other in place.
 
 ## Build from source
 
@@ -187,7 +191,17 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradle
 
 Release signing reads `ATOTO_SIGNING_STORE`, `ATOTO_SIGNING_STORE_PASSWORD`,
 `ATOTO_SIGNING_KEY_ALIAS` and `ATOTO_SIGNING_KEY_PASSWORD` from the
-environment; no keystore is committed.
+environment; no keystore is committed. With those set, `./gradlew
+assembleRelease` writes a signed
+`app/build/outputs/apk/release/atoto-s8g1104ms-wifi-adb-release.apk`.
+
+Releases are built by CI: pushing a `v*` tag runs the `release` job in
+[.github/workflows/android.yml](.github/workflows/android.yml), which signs the
+APK with the repository's `RELEASE_KEYSTORE_BASE64`,
+`RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD`
+secrets and attaches it to that tag's GitHub release (creating a draft
+release if none exists). Builds from forks or without the secrets fail
+rather than ship an unsigned APK.
 
 ## Compatibility reports
 

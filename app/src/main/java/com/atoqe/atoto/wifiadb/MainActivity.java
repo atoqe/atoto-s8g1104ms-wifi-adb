@@ -1,4 +1,4 @@
-package com.lrehmann.atoto.wifiadb;
+package com.atoqe.atoto.wifiadb;
 
 import android.app.Activity;
 import android.app.AlertDialog;

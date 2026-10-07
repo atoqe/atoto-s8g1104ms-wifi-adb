@@ -35,9 +35,11 @@ Choose one method:
 Android may ask you to allow installs from the browser or file manager. Enable
 that permission only for the installation, then turn it back off.
 
-If upstream's `ATOTO Wi-Fi ADB` 1.0.0 is installed, uninstall it first. Both
-use the package name `com.lrehmann.atoto.wifiadb` but are signed with
-different keys, so Android refuses to install one over the other.
+From 1.2.0 the app's package name is `com.atoqe.atoto.wifiadb`. Upstream's
+`ATOTO Wi-Fi ADB` and this fork's 1.1.0 (both `com.lrehmann.atoto.wifiadb`)
+are separate apps that stay installed alongside it; uninstall them to avoid
+confusion. Uninstalling an older copy does not turn Wi-Fi ADB off, because the
+setting is stored in system properties.
 
 ## 2. Enable Wi-Fi ADB
 
