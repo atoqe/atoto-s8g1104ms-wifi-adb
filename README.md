@@ -97,6 +97,14 @@ addresses.
 Release 1.1.0 of this fork still used upstream's package name and a debug key.
 1.2.0 and later install as a separate app and update each other in place.
 
+Release APKs from 1.2.0 on are signed with this certificate
+(`CN=atoto-s8g1104ms-wifi-adb`). Check a download with
+`apksigner verify --print-certs atoto-s8g1104ms-wifi-adb.apk`:
+
+```text
+SHA-256: 1b:a9:73:e4:72:27:fa:85:74:36:ad:0b:b6:bf:19:1b:8d:6c:7b:a1:86:67:0d:7c:8d:de:2c:74:c3:df:f6:98
+```
+
 ## Build from source
 
 Requirements: JDK 17 or newer (Android Studio's bundled JDK works) and the
