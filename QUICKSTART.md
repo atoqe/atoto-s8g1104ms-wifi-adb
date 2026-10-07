@@ -7,8 +7,11 @@ the car; the head unit needs to stay on (ACC on) the whole time.
 
 - The head unit and a computer on the **same private Wi-Fi network** (not a
   guest network, no client isolation). A phone hotspot works.
-- [Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools)
-  (`adb`) on the computer.
+- `adb` on the computer, from
+  [Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools).
+  If you would rather not set it up yourself, an AI coding agent such as
+  [Claude Code](https://claude.com/claude-code) can install it and make the
+  connection for you; see [Let Claude Code connect](#let-claude-code-connect).
 - **`atoto-s8g1104ms-wifi-adb.apk`** from the
   [latest release](https://github.com/atoqe/atoto-s8g1104ms-wifi-adb/releases/latest).
 
@@ -19,14 +22,6 @@ Pick whichever is easiest:
 - **USB stick.** Copy the APK to a FAT32 stick, plug it into the head unit, open
   it in the file manager.
 - **Head-unit browser.** Open the release page and download the APK.
-- **Local web server.** On the computer, in the folder holding the APK:
-
-  ```sh
-  python3 -m http.server 8765
-  ```
-
-  then browse to `http://COMPUTER_IP:8765/atoto-s8g1104ms-wifi-adb.apk` on the
-  head unit.
 
 Android asks to allow installs from that source. Allow it for this install,
 then turn it back off.
@@ -72,6 +67,26 @@ adb -s HEAD_UNIT_IP:5555 shell
 
 `device` in the list means you are in. `unauthorized` means the prompt was not
 approved (or never appeared).
+
+### Let Claude Code connect
+
+Instead of typing the `adb` commands yourself, you can hand the computer side
+to [Claude Code](https://claude.com/claude-code) (or a similar AI coding agent
+that can run terminal commands). It still uses `adb`, but it installs Platform
+Tools if they are missing (on macOS, `brew install --cask
+android-platform-tools`), runs the commands, and reads the results for you. Ask
+it something like:
+
+> Install adb if it isn't installed, then connect to my head unit at
+> HEAD_UNIT_IP:5555 over Wi-Fi and check that `adb devices` shows it as
+> `device`.
+
+Use the IP address from the app's status panel. Approve each command it asks to
+run, and tap **Allow** on the head unit when the RSA prompt appears: the agent
+cannot do that part. Once connected, you can keep asking it to run `adb`
+commands for you, such as installing APKs or reading logs. ADB gives whatever
+runs it full control of the head unit, so read [SECURITY.md](SECURITY.md) and
+review what the agent proposes before approving it.
 
 ## USB debugging is off
 

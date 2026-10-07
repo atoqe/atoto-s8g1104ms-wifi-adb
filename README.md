@@ -37,8 +37,8 @@ exactly what did not apply. Please report results (see [Compatibility reports](#
 
 1. Download **`atoto-s8g1104ms-wifi-adb.apk`** from the
    [latest release](https://github.com/atoqe/atoto-s8g1104ms-wifi-adb/releases/latest).
-2. Install it on the head unit from a USB stick (file manager), the head-unit
-   browser, or a local web server. No ADB connection is needed for this.
+2. Install it on the head unit from a USB stick (file manager) or the head-unit
+   browser. No ADB connection is needed for this.
 3. Connect the head unit and your computer to the same trusted Wi-Fi network.
 4. Open **S8 Wi-Fi ADB (1104MS)** and check that it shows
    `FYT ToolkitService: FOUND`.
@@ -53,6 +53,10 @@ exactly what did not apply. Please report results (see [Compatibility reports](#
 
 7. Approve the RSA prompt on the head unit. `adb devices` should now say
    `device`.
+
+Prefer not to run `adb` yourself? An AI coding agent such as Claude Code can
+install it and connect for you: see
+[Let Claude Code connect](QUICKSTART.md#let-claude-code-connect).
 
 Each step in more detail, with what the app shows: [QUICKSTART.md](QUICKSTART.md).
 Troubleshooting and the full guide: [docs/INSTALL.md](docs/INSTALL.md).

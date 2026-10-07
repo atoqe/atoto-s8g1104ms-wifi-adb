@@ -21,16 +21,6 @@ Choose one method:
 1. Open the latest GitHub release in the head-unit browser, download
    `atoto-s8g1104ms-wifi-adb.apk`, and open it.
 2. Copy the APK to removable storage and open it with the ATOTO file manager.
-3. If GitHub downloads are awkward on the head unit, serve the APK from a
-   computer on the same LAN:
-
-   ```sh
-   cd ~/Downloads
-   python3 -m http.server 8765
-   ```
-
-   Then visit `http://COMPUTER_LAN_IP:8765/atoto-s8g1104ms-wifi-adb.apk` on the head
-   unit. Replace `COMPUTER_LAN_IP`; do not type that placeholder literally.
 
 Android may ask you to allow installs from the browser or file manager. Enable
 that permission only for the installation, then turn it back off.
