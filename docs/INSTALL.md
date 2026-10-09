@@ -25,6 +25,9 @@ Choose one method:
 Android may ask you to allow installs from the browser or file manager. Enable
 that permission only for the installation, then turn it back off.
 
+Upgrading from 1.2.x: install 1.3.0 over it. It updates in place (same
+package and signing key) and keeps the current Wi-Fi ADB setting.
+
 From 1.2.0 the app's package name is `com.atoqe.atoto.wifiadb`. Upstream's
 `ATOTO Wi-Fi ADB` and this fork's 1.1.0 (both `com.lrehmann.atoto.wifiadb`)
 are separate apps that stay installed alongside it; uninstall them to avoid
@@ -38,15 +41,39 @@ setting is stored in system properties.
 3. Confirm that the app does not say **Not available on this unit**.
 4. Under **MODE**, tap **Always on**. Use **On until reboot** if you do not
    want the setting to survive a reboot.
-5. Wait a few seconds. The app reads the properties back and probes port 5555,
+5. Read the **Use only on trusted Wi-Fi** warning and tap **Turn on** only if
+   the head unit is on a network you trust.
+6. Wait a few seconds. The app reads the properties back and probes port 5555,
    then shows **Ready to connect** or exactly what did not apply. The screen
    keeps itself up to date while it is open.
-6. Note the IP address shown under **HEAD UNIT ADDRESS** (or **Not connected
+7. Note the IP address shown under **HEAD UNIT ADDRESS** (or **Not connected
    to Wi-Fi** if the unit has no network yet).
 
 Choosing a mode sends the FYT property requests and restarts `adbd`. It does not
 root the unit, patch a boot image, modify a firmware partition, or install a
 system application.
+
+### What the screen shows
+
+The left column is live status; it refreshes when Wi-Fi changes and every few
+seconds while the app is open.
+
+| Headline | Meaning |
+| --- | --- |
+| **Ready to connect** (green) | ADB is answering on port 5555 and the unit has a Wi-Fi address. |
+| **Waiting for Wi-Fi** (amber) | ADB is on, but the unit is not on a network. |
+| **Starting…** (amber) | A mode is on but ADB is not answering yet. If it stays, choose the mode again. |
+| **Wi-Fi ADB is off** (grey) | No wireless ADB. |
+| **Not available on this unit** (red) | The firmware lacks the vendor service; the controls are disabled. |
+
+Under **CHECKS**: **Wi-Fi** (`Connected` / `Not connected` / `Off`),
+**Answering on port 5555** (`Yes` / `No`), **After a reboot** (`Stays on` /
+`Off after reboot`) and **Computer approval prompt** (`Ready`, or `May not
+appear` when USB debugging is off).
+
+The right column holds the **MODE** picker (the highlighted mode is the current
+setting), a message box that reports the result of the last change, and the
+**USB debugging at boot** toggle under **TROUBLESHOOTING**.
 
 ## 3. Connect from the computer
 
@@ -66,7 +93,7 @@ adb -s HEAD_UNIT_IP:5555 shell
 
 ## 4. Verify persistence
 
-After enabling the persistent option, reboot the head unit normally. Wait for
+After choosing **Always on**, reboot the head unit normally. Wait for
 Wi-Fi to reconnect, then repeat `adb connect HEAD_UNIT_IP:5555`. The IP may
 change after a reboot; a DHCP reservation makes repeated development easier.
 
@@ -92,11 +119,12 @@ targets Android 10.
 Unlock or foreground the head unit and approve the RSA prompt.
 
 The prompt only appears when Android's USB debugging is on, even for Wi-Fi
-ADB. Check `Android USB debugging (adb_enabled)` in the app. If it says `OFF`,
-turn on Developer options → USB debugging (tap Build number seven times to
-unlock Developer options). If that toggle will not stay on, tap **TURN ON USB
-DEBUGGING AT BOOT** and reboot; it sets `persist.sys.usb.config=adb`, which
-Android 10 copies into `adb_enabled` at boot.
+ADB. Check **Computer approval prompt** under **CHECKS** in the app. If it says
+`May not appear`, turn on Developer options → USB debugging (tap Build number
+seven times to unlock Developer options). If that toggle will not stay on, turn
+on **USB debugging at boot** in the app and reboot; it sets
+`persist.sys.usb.config=adb`, which Android 10 copies into `adb_enabled` at
+boot.
 
 If USB debugging is on and no prompt is visible, try:
 
@@ -110,19 +138,27 @@ adb connect HEAD_UNIT_IP:5555
 Do not delete an existing trusted ADB key unless you understand that every
 Android device previously paired with that key will ask again.
 
-### The app says `FAILED: ADB port properties did not change`
+### The app says `That didn't work`
 
 The FYT service accepted the request but the property stayed the same: this
 firmware either ignores command 161 or refuses that property. Do not keep
-retrying. Report the firmware line shown at the top of the app.
+retrying. Report the Android version and build number shown at the top of the
+app.
 
-### `FYT ToolkitService: NOT FOUND` or bind failure
+### `Not available on this unit`, or `The head unit's system service did not respond`
 
 The firmware is not compatible with this technique, the vendor service name
 changed, or the service no longer permits an ordinary app to bind. Do not keep
-pressing the button and do not flash another model's firmware. Open a GitHub
-issue with the ATOTO model, Android version, build display, and incremental
-value shown in the app. Do not post serial numbers or Wi-Fi credentials.
+choosing a mode and do not flash another model's firmware. Open a GitHub issue
+with the ATOTO model and the Android version and build number shown at the top
+of the app. Do not post serial numbers or Wi-Fi credentials.
+
+### `Not connected to Wi-Fi` or `Wi-Fi is off`
+
+The app looks for an IPv4 address on a Wi-Fi (or Ethernet) network. Tap **Open
+Wi-Fi settings**, join the same network as the computer, and the address
+appears by itself. A head unit running its own hotspot is not shown as
+connected.
 
 ### Mac has several interfaces on the same subnet
 
@@ -141,7 +177,8 @@ Change `en0` to the interface that actually reaches the head unit.
 
 ## Disable it
 
-Open the app and tap **Off** under **MODE**. The active connection closes when
+Open the app, tap **Off** under **MODE**, and confirm with **Turn off**. The
+active connection closes when
 `adbd` restarts, and the app reports `Wi-Fi ADB is off, now and after reboot.`
 Both ports then read `-1`. (Upstream 1.0.0 tried to clear the persistent port
 with an empty value, which this firmware ignores, so ADB came back after the

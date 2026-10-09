@@ -27,7 +27,7 @@ firmware. All credit for the original technique goes to lrehmann.
 
 | Model | Android | Firmware | Result |
 | --- | --- | --- | --- |
-| S8G1104MS | 10 (API 29) | incremental `46117`, `com.syu.ms` 25.1119 (APP20251124 / System20251117) | Works (this fork) |
+| S8G1104MS | 10 (API 29) | incremental `46117`, `com.syu.ms` 25.1119 (APP20251124 / System20251117) | Works (this fork, through 1.3.0) |
 | S8G2A74MS | 10 | `QP1A.190711.020`, incremental `33515` | Works (upstream 1.0.0) |
 
 Other S8 models and FYT units may work: the app checks each step and tells you
@@ -42,7 +42,8 @@ exactly what did not apply. Please report results (see [Compatibility reports](#
 3. Connect the head unit and your computer to the same trusted Wi-Fi network.
 4. Open **S8 Wi-Fi ADB (1104MS)**. It shows the unit's IP address, or
    **Not connected to Wi-Fi**.
-5. Under **MODE**, tap **Always on**. Wait for **Ready to connect**.
+5. Under **MODE**, tap **Always on**, read the trusted Wi-Fi warning, and tap
+   **Turn on**. Wait for **Ready to connect**.
 6. On the computer:
 
    ```sh
@@ -76,13 +77,17 @@ Troubleshooting and the full guide: [docs/INSTALL.md](docs/INSTALL.md).
   connected to Wi-Fi), whether `adbd` is answering, whether it stays on after
   reboot, and whether USB debugging (`adb_enabled`) is on. The screen updates
   by itself when Wi-Fi or ADB changes.
+- Asks you to confirm you are on a trusted Wi-Fi network before turning
+  Wi-Fi ADB on, and to confirm before turning it off.
 - **USB debugging at boot**: a fallback for units where the Developer options
   toggle will not stay on. Without USB debugging, Android never shows the RSA
   prompt and `adb` stays `unauthorized`.
 - Copies the `adb connect` command to the clipboard.
 
-No background service, no network requests (the only socket is the loopback
-probe), no analytics. The APK contains no firmware, vendor code, keys, or
+No background service (it only checks status while it is on screen), no network
+requests (the only socket is the loopback probe), no analytics. Permissions:
+`ACCESS_NETWORK_STATE` and `ACCESS_WIFI_STATE` to show the address and Wi-Fi
+state, `INTERNET` for the loopback probe. The APK contains no firmware, vendor code, keys, or
 addresses.
 
 ## Changes from upstream 1.0.0
@@ -99,13 +104,16 @@ addresses.
   1.2.0), so it installs alongside upstream instead of clashing with it.
 - Targets Android 10 (API 29), the head unit's version, from 1.2.1. Google
   Play Protect blocks installing apps that target older versions.
-- Redesigned single-screen interface from 1.3.0 (dark, large type, mode
-  selector, coloured status checks). **On until reboot** now also clears the
-  persistent port, so it means the same thing whatever the previous mode was.
+- Redesigned single-screen interface from 1.3.0: two columns, dark theme,
+  large type, mode picker, coloured status checks, the Wi-Fi IP address (or
+  that the unit is not on Wi-Fi), and a trusted Wi-Fi warning before turning
+  it on. **On until reboot** now also clears the persistent port, so it means
+  the same thing whatever the previous mode was.
 - App label `S8 Wi-Fi ADB (1104MS)`, version `1.3.0-s8g1104ms`.
 
 Release 1.1.0 of this fork still used upstream's package name and a debug key.
-1.2.0 and later install as a separate app and update each other in place.
+1.2.0 and later install as a separate app and update each other in place
+(1.3.0 installs over 1.2.x and keeps the current setting).
 
 Release APKs from 1.2.0 on are signed with this certificate
 (`CN=atoto-s8g1104ms-wifi-adb`). Check a download with
@@ -127,7 +135,9 @@ cd atoto-s8g1104ms-wifi-adb
 ```
 
 The APK is written to
-`app/build/outputs/apk/debug/atoto-s8g1104ms-wifi-adb-debug.apk`. On macOS
+`app/build/outputs/apk/debug/atoto-s8g1104ms-wifi-adb-debug.apk`. Debug builds
+use the package `com.atoqe.atoto.wifiadb.debug`, so they install beside the
+release app instead of clashing with its signing key. On macOS
 without a system JDK:
 
 ```sh
