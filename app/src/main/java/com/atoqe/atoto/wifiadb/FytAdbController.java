@@ -84,7 +84,7 @@ final class FytAdbController implements ServiceConnection {
 
     private void request(Request request, Listener listener) {
         if (pendingListener != null) {
-            listener.onError("Another FYT request is already in progress.");
+            listener.onError("Another request is already in progress.");
             return;
         }
         pendingListener = listener;
@@ -97,10 +97,10 @@ final class FytAdbController implements ServiceConnection {
         try {
             bound = context.bindService(toolkitIntent(), this, Context.BIND_AUTO_CREATE);
             if (!bound) {
-                fail("FYT ToolkitService did not bind. This firmware may be incompatible.");
+                fail("The head unit's system service did not respond. This firmware may be incompatible.");
             }
         } catch (Exception error) {
-            fail("FYT ToolkitService bind failed: " + safeMessage(error));
+            fail("Could not reach the head unit's system service: " + safeMessage(error));
         }
     }
 
@@ -109,12 +109,12 @@ final class FytAdbController implements ServiceConnection {
         try {
             mainModule = getRemoteModule(service, MAIN_MODULE);
             if (mainModule == null) {
-                fail("The FYT main module was unavailable.");
+                fail("The head unit's system service was unavailable.");
                 return;
             }
             runPendingRequest();
         } catch (Exception error) {
-            fail("FYT module connection failed: " + safeMessage(error));
+            fail("Connection to the head unit's system service failed: " + safeMessage(error));
         }
     }
 
@@ -147,6 +147,9 @@ final class FytAdbController implements ServiceConnection {
         try {
             switch (request) {
                 case TEMPORARY:
+                    // Clear the persistent port too, so "until reboot" also
+                    // means that when the unit was set to stay on.
+                    setProperty("persist.adb.tcp.port", "-1");
                     setProperty("service.adb.tcp.port", Integer.toString(ADB_PORT));
                     break;
                 case PERSISTENT:
@@ -172,11 +175,11 @@ final class FytAdbController implements ServiceConnection {
                     setProperty("ctl.restart", "adbd");
                     succeed();
                 } catch (Exception error) {
-                    fail("adbd restart failed: " + safeMessage(error));
+                    fail("Restarting ADB failed: " + safeMessage(error));
                 }
             }, 400L);
         } catch (Exception error) {
-            fail("Wi-Fi ADB property request failed: " + safeMessage(error));
+            fail("The request failed: " + safeMessage(error));
         }
     }
 
@@ -189,7 +192,7 @@ final class FytAdbController implements ServiceConnection {
     private void setProperty(String name, String value) throws RemoteException {
         IBinder module = mainModule;
         if (module == null || !module.isBinderAlive()) {
-            throw new RemoteException("FYT main module disconnected");
+            throw new RemoteException("The system service disconnected");
         }
 
         Parcel data = Parcel.obtain();
@@ -200,7 +203,7 @@ final class FytAdbController implements ServiceConnection {
             data.writeFloatArray(null);
             data.writeStringArray(new String[]{name, value});
             if (!module.transact(1, data, null, IBinder.FLAG_ONEWAY)) {
-                throw new RemoteException("FYT property transaction was rejected");
+                throw new RemoteException("The property request was rejected");
             }
         } finally {
             data.recycle();
@@ -215,7 +218,7 @@ final class FytAdbController implements ServiceConnection {
             data.writeInterfaceToken(TOOLKIT_DESCRIPTOR);
             data.writeInt(module);
             if (!toolkit.transact(1, data, reply, 0)) {
-                throw new RemoteException("FYT toolkit transaction was rejected");
+                throw new RemoteException("The system service rejected the request");
             }
             reply.readException();
             return reply.readStrongBinder();

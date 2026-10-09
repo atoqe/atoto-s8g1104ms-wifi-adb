@@ -40,10 +40,9 @@ exactly what did not apply. Please report results (see [Compatibility reports](#
 2. Install it on the head unit from a USB stick (file manager) or the head-unit
    browser. No ADB connection is needed for this.
 3. Connect the head unit and your computer to the same trusted Wi-Fi network.
-4. Open **S8 Wi-Fi ADB (1104MS)** and check that it shows
-   `FYT ToolkitService: FOUND`.
-5. Tap **ENABLE PERSISTENT WI-FI ADB**. Wait for
-   `Wi-Fi ADB is listening on port 5555`.
+4. Open **S8 Wi-Fi ADB (1104MS)**. It shows the unit's IP address, or
+   **Not connected to Wi-Fi**.
+5. Under **MODE**, tap **Always on**. Wait for **Ready to connect**.
 6. On the computer:
 
    ```sh
@@ -63,14 +62,20 @@ Troubleshooting and the full guide: [docs/INSTALL.md](docs/INSTALL.md).
 
 ## What the app does
 
+![The app on the head unit: status and address on the left, mode and troubleshooting on the right](docs/screenshots/main-screen.png)
+
 - Binds to `com.syu.ms/app.ToolkitService` and uses FYT main-module command 161
   to set the ADB port properties, then restarts `adbd`.
-- **Persistent** (survives reboots), **this boot only**, and **disable**.
+- One screen, two columns: live status on the left, controls on the right.
+  Three modes: **Always on** (survives reboots), **On until reboot**, and
+  **Off**.
 - After every request it reads the properties back and probes
   `127.0.0.1:5555`, then says either that it worked or exactly what did not
   change.
-- Shows the head unit's IPv4 address, the current and persistent ADB ports,
-  whether `adbd` is listening, and whether USB debugging (`adb_enabled`) is on.
+- Shows the head unit's Wi-Fi IP address in large type (or that it is not
+  connected to Wi-Fi), whether `adbd` is answering, whether it stays on after
+  reboot, and whether USB debugging (`adb_enabled`) is on. The screen updates
+  by itself when Wi-Fi or ADB changes.
 - **USB debugging at boot**: a fallback for units where the Developer options
   toggle will not stay on. Without USB debugging, Android never shows the RSA
   prompt and `adb` stays `unauthorized`.
@@ -94,7 +99,10 @@ addresses.
   1.2.0), so it installs alongside upstream instead of clashing with it.
 - Targets Android 10 (API 29), the head unit's version, from 1.2.1. Google
   Play Protect blocks installing apps that target older versions.
-- App label `S8 Wi-Fi ADB (1104MS)`, version `1.2.1-s8g1104ms`.
+- Redesigned single-screen interface from 1.3.0 (dark, large type, mode
+  selector, coloured status checks). **On until reboot** now also clears the
+  persistent port, so it means the same thing whatever the previous mode was.
+- App label `S8 Wi-Fi ADB (1104MS)`, version `1.3.0-s8g1104ms`.
 
 Release 1.1.0 of this fork still used upstream's package name and a debug key.
 1.2.0 and later install as a separate app and update each other in place.
@@ -142,8 +150,8 @@ rather than ship an unsigned APK.
 
 ## Compatibility reports
 
-Open an issue with the model, Android version, build display, and incremental
-shown at the top of the app, plus the status line after you pressed a button.
+Open an issue with the Android version and build number shown at the top of
+the app, plus the message shown after you chose a mode.
 Do not post serial numbers, Wi-Fi names, or passwords.
 
 ## Documentation

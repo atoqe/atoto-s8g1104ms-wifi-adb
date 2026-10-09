@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Only used to tell "Wi-Fi is off" from "not connected to Wi-Fi". -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Only used to probe 127.0.0.1:5555 so the app can confirm adbd is listening. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -9,7 +11,7 @@
         android:icon="@drawable/ic_launcher"
         android:label="S8 Wi-Fi ADB (1104MS)"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/AppTheme">
         <activity
             android:name=".MainActivity"
             android:exported="true"

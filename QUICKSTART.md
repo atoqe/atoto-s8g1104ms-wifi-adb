@@ -35,23 +35,27 @@ setting lives in system properties, not in the app.
 ## 2. Turn on Wi-Fi ADB
 
 1. Open **S8 Wi-Fi ADB (1104MS)**.
-2. The status panel should read `FYT ToolkitService: FOUND` and show a
-   `Head-unit IPv4` address. No address means Wi-Fi is not connected yet.
-3. Tap **ENABLE PERSISTENT WI-FI ADB** and confirm. (Use **ENABLE FOR THIS BOOT
-   ONLY** if you want it gone after the next restart.)
-4. After a few seconds the status line says one of:
+2. The left half of the screen shows the status and, under **HEAD UNIT
+   ADDRESS**, the unit's IP address. **Not connected to Wi-Fi** (or **Wi-Fi is
+   off**) means you need to join a network first; **Open Wi-Fi settings** takes
+   you there.
+3. Under **MODE** on the right, tap **Always on**. A warning reminds you to
+   use Wi-Fi ADB only on a trusted Wi-Fi network; tap **Turn on**. (Use **On
+   until reboot** if you want it gone after the next restart.)
+4. After a few seconds the status turns green, **Ready to connect**, and a
+   message appears under the modes:
 
-   | Status line | Meaning |
+   | Message | Meaning |
    | --- | --- |
-   | `Wi-Fi ADB is listening on port 5555 ...` | Done. Go to step 3. |
-   | `... but USB debugging is OFF ...` | ADB is listening, but the RSA prompt will not appear. See [USB debugging](#usb-debugging-is-off). |
-   | `Port set to 5555 but adbd is not listening yet` | Tap **REFRESH STATUS** after a few seconds. |
-   | `FAILED: ...` | This firmware does not accept the request. Stop and [report it](README.md#compatibility-reports). |
+   | `Wi-Fi ADB is on. Run the command ...` | Done. Go to step 3. |
+   | `... but USB debugging is off ...` | ADB is on, but the RSA prompt will not appear. See [USB debugging](#usb-debugging-is-off). |
+   | `Turned on, but ADB isn't answering yet ...` | Wait a few seconds; the screen updates by itself (or tap **Refresh**). |
+   | `That didn't work ...` | This firmware does not accept the request. Stop and [report it](README.md#compatibility-reports). |
 
 ## 3. Connect from the computer
 
-The status panel's `Computer command` line shows the exact command. Run it on
-the computer:
+The app shows the exact command under the address (**Copy** puts it on the
+clipboard). Run it on the computer:
 
 ```sh
 adb connect HEAD_UNIT_IP:5555
@@ -81,7 +85,7 @@ it something like:
 > HEAD_UNIT_IP:5555 over Wi-Fi and check that `adb devices` shows it as
 > `device`.
 
-Use the IP address from the app's status panel. Approve each command it asks to
+Use the IP address the app shows. Approve each command it asks to
 run, and tap **Allow** on the head unit when the RSA prompt appears: the agent
 cannot do that part. Once connected, you can keep asking it to run `adb`
 commands for you, such as installing APKs or reading logs. ADB gives whatever
@@ -94,8 +98,8 @@ Android only shows the RSA prompt when USB debugging is on, even for Wi-Fi ADB.
 
 1. Settings → About → tap **Build number** seven times to unlock Developer
    options, then turn on **Developer options → USB debugging**.
-2. If that toggle will not stay on, tap **TURN ON USB DEBUGGING AT BOOT** in the
-   app and reboot the head unit. It sets `persist.sys.usb.config=adb`, which
+2. If that toggle will not stay on, turn on **USB debugging at boot** (under
+   **TROUBLESHOOTING** in the app) and reboot the head unit. It sets `persist.sys.usb.config=adb`, which
    Android 10 reads at boot.
 
 ## After a reboot or sleep
@@ -107,13 +111,13 @@ change (a DHCP reservation in your router keeps it fixed), and Wi-Fi takes
 `adb mdns services` lists the unit's address.
 
 If `adb` stops answering after a firmware update, reopen the app and tap
-**ENABLE PERSISTENT WI-FI ADB** again.
+**Always on** again.
 
 ## Turn it off
 
-Tap **DISABLE WI-FI ADB**. The status line should read
+Tap **Off** under **MODE** and confirm. The message should read
 `Wi-Fi ADB is off, now and after reboot.` If you turned on USB debugging at
-boot, tap **TURN OFF USB DEBUGGING AT BOOT** as well.
+boot, switch **USB debugging at boot** off as well.
 
 More detail and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md). Before
 leaving ADB on, read [SECURITY.md](SECURITY.md).

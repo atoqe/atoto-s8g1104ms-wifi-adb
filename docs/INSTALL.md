@@ -35,15 +35,16 @@ setting is stored in system properties.
 
 1. Connect the head unit to a trusted Wi-Fi network.
 2. Open **S8 Wi-Fi ADB (1104MS)**.
-3. Confirm that **FYT ToolkitService: FOUND** is displayed.
-4. Select **Enable persistent Wi-Fi ADB**. Use **Enable for this boot only** if
-   you do not want the setting to survive a reboot.
-5. Wait a few seconds for the status line. The app reads the properties back
-   and probes port 5555, then reports `Wi-Fi ADB is listening on port 5555`
-   or exactly what did not apply.
-6. Note the IPv4 address shown by the app.
+3. Confirm that the app does not say **Not available on this unit**.
+4. Under **MODE**, tap **Always on**. Use **On until reboot** if you do not
+   want the setting to survive a reboot.
+5. Wait a few seconds. The app reads the properties back and probes port 5555,
+   then shows **Ready to connect** or exactly what did not apply. The screen
+   keeps itself up to date while it is open.
+6. Note the IP address shown under **HEAD UNIT ADDRESS** (or **Not connected
+   to Wi-Fi** if the unit has no network yet).
 
-The button sends the FYT property requests and restarts `adbd`. It does not
+Choosing a mode sends the FYT property requests and restarts `adbd`. It does not
 root the unit, patch a boot image, modify a firmware partition, or install a
 system application.
 
@@ -80,8 +81,8 @@ targets Android 10.
 
 ### `connection refused`
 
-- Reopen the app and press the enable button again.
-- Confirm the displayed current port is `5555`.
+- Reopen the app and tap **Always on** again.
+- Confirm **Answering on port 5555** reads **Yes**.
 - Confirm both devices are on the same non-guest network.
 - Disable wireless/client isolation in the access point.
 - Check the computer firewall and use the head unit's current IP address.
@@ -140,11 +141,11 @@ Change `en0` to the interface that actually reaches the head unit.
 
 ## Disable it
 
-Open the app and press **DISABLE WI-FI ADB**. The active connection closes when
+Open the app and tap **Off** under **MODE**. The active connection closes when
 `adbd` restarts, and the app reports `Wi-Fi ADB is off, now and after reboot.`
 Both ports then read `-1`. (Upstream 1.0.0 tried to clear the persistent port
 with an empty value, which this firmware ignores, so ADB came back after the
 next reboot; this fork writes `-1`.)
 
-If you turned on USB debugging at boot, press **TURN OFF USB DEBUGGING AT
-BOOT** too.
+If you turned on USB debugging at boot, switch **USB debugging at boot** off
+too.

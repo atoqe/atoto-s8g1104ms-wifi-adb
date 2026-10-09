@@ -21,8 +21,8 @@ android {
         applicationId "com.atoqe.atoto.wifiadb"
         minSdk 23
         targetSdk 29
-        versionCode 4
-        versionName "1.2.1-s8g1104ms"
+        versionCode 5
+        versionName "1.3.0-s8g1104ms"
     }
 
     if (hasReleaseSigning) {
@@ -37,6 +37,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Installs beside the release-signed app instead of clashing with it.
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
         release {
             minifyEnabled false
             if (hasReleaseSigning) {
