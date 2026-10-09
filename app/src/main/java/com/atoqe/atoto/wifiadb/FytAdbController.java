@@ -41,7 +41,7 @@ final class FytAdbController implements ServiceConnection {
     private static final String MODULE_DESCRIPTOR = "com.syu.ipc.IRemoteModule";
     private static final int MAIN_MODULE = 0;
     private static final int SET_ANY_SYSTEM_PROPERTY = 161;
-    private static final int ADB_PORT = 5555;
+    static final int ADB_PORT = 5555;
 
     private final Context context;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -119,6 +119,20 @@ final class FytAdbController implements ServiceConnection {
     }
 
     @Override
+    public void onNullBinding(ComponentName name) {
+        // No onServiceConnected follows, so the request would otherwise never finish.
+        unbind();
+        fail("The head unit's system service refused the connection. This firmware may be incompatible.");
+    }
+
+    @Override
+    public void onBindingDied(ComponentName name) {
+        // This binding never reconnects; drop it so the next request binds afresh.
+        unbind();
+        fail("The head unit's system service stopped. Try again.");
+    }
+
+    @Override
     public void onServiceDisconnected(ComponentName name) {
         mainModule = null;
         // The ServiceConnection remains registered and may reconnect. Keep
@@ -128,6 +142,10 @@ final class FytAdbController implements ServiceConnection {
     void close() {
         pendingListener = null;
         pendingRequest = null;
+        unbind();
+    }
+
+    private void unbind() {
         if (bound) {
             try {
                 context.unbindService(this);

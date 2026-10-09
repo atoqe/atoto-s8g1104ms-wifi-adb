@@ -35,11 +35,15 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 public final class MainActivity extends Activity {
-    private static final int ADB_PORT = 5555;
+    private static final int ADB_PORT = FytAdbController.ADB_PORT;
     private static final String PORT = Integer.toString(ADB_PORT);
     private static final String TARGET_INCREMENTAL = "46117";
     private static final long POLL_INTERVAL_MS = 5000L;
@@ -78,6 +82,18 @@ public final class MainActivity extends Activity {
         boolean toolkitPresent;
         boolean listening;
         boolean adbEnabled;
+
+        boolean sameAs(Status other) {
+            return other != null
+                    && Objects.equals(address, other.address)
+                    && wifiEnabled == other.wifiEnabled
+                    && Objects.equals(servicePort, other.servicePort)
+                    && Objects.equals(persistentPort, other.persistentPort)
+                    && Objects.equals(usbConfig, other.usbConfig)
+                    && toolkitPresent == other.toolkitPresent
+                    && listening == other.listening
+                    && adbEnabled == other.adbEnabled;
+        }
 
         boolean hasNetwork() {
             return !TextUtils.isEmpty(address);
@@ -201,6 +217,7 @@ public final class MainActivity extends Activity {
             root.postDelayed(this, POLL_INTERVAL_MS);
         }
     };
+    private final Runnable resetCopyLabel = () -> this.copyButton.setText("Copy");
     private final ConnectivityManager.NetworkCallback networkCallback =
             new ConnectivityManager.NetworkCallback() {
                 @Override
@@ -507,31 +524,37 @@ public final class MainActivity extends Activity {
     }
 
     private void refreshStatus(Verdict verdict) {
-        if (statusExecutor.isShutdown()) {
-            return;
-        }
-        statusExecutor.execute(() -> {
-            Status status = new Status();
-            status.address = findNetworkAddress();
-            status.wifiEnabled = isWifiEnabled();
-            status.servicePort = readAndroidProperty("service.adb.tcp.port");
-            status.persistentPort = readAndroidProperty("persist.adb.tcp.port");
-            status.usbConfig = readAndroidProperty("persist.sys.usb.config");
-            status.toolkitPresent = controller.isToolkitServicePresent();
-            status.listening = isLocalPortListening(ADB_PORT);
-            status.adbEnabled = Settings.Global.getInt(
-                    getContentResolver(), Settings.Global.ADB_ENABLED, 0) == 1;
-            runOnUiThread(() -> {
-                if (isDestroyed()) {
-                    return;
-                }
-                render(status);
-                if (verdict != null) {
-                    showResult(verdict.describe(status));
-                    setBusy(false);
-                }
+        try {
+            statusExecutor.execute(() -> {
+                Status status = new Status();
+                status.address = findNetworkAddress();
+                status.wifiEnabled = isWifiEnabled();
+                Map<String, String> properties = readAndroidProperties();
+                status.servicePort = property(properties, "service.adb.tcp.port");
+                status.persistentPort = property(properties, "persist.adb.tcp.port");
+                status.usbConfig = property(properties, "persist.sys.usb.config");
+                status.toolkitPresent = controller.isToolkitServicePresent();
+                status.listening = isLocalPortListening(ADB_PORT);
+                status.adbEnabled = Settings.Global.getInt(
+                        getContentResolver(), Settings.Global.ADB_ENABLED, 0) == 1;
+                runOnUiThread(() -> {
+                    if (isDestroyed()) {
+                        return;
+                    }
+                    // Polls usually find nothing new; skip rebuilding the views then.
+                    if (verdict == null && status.sameAs(lastStatus)) {
+                        return;
+                    }
+                    render(status);
+                    if (verdict != null) {
+                        showResult(verdict.describe(status));
+                        setBusy(false);
+                    }
+                });
             });
-        });
+        } catch (RejectedExecutionException ignored) {
+            // The activity is being destroyed; network callbacks can still arrive.
+        }
     }
 
     private void render(Status status) {
@@ -574,7 +597,7 @@ public final class MainActivity extends Activity {
             addressText.setTextSize(TEXT_ADDRESS);
             addressText.setTextColor(COLOR_TEXT);
             addressHint.setVisibility(View.GONE);
-            commandText.setText("adb connect " + status.address + ":" + ADB_PORT);
+            commandText.setText(connectCommand(status.address));
             commandBox.setVisibility(View.VISIBLE);
             wifiSettingsButton.setVisibility(View.GONE);
         } else {
@@ -783,12 +806,17 @@ public final class MainActivity extends Activity {
         if (lastStatus == null || !lastStatus.hasNetwork()) {
             return;
         }
-        String command = "adb connect " + lastStatus.address + ":" + ADB_PORT;
         ClipboardManager clipboard =
                 (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        clipboard.setPrimaryClip(ClipData.newPlainText("adb connect command", command));
+        clipboard.setPrimaryClip(ClipData.newPlainText("adb connect command",
+                connectCommand(lastStatus.address)));
         copyButton.setText("Copied ✓");
-        copyButton.postDelayed(() -> copyButton.setText("Copy"), 2000L);
+        copyButton.removeCallbacks(resetCopyLabel);
+        copyButton.postDelayed(resetCopyLabel, 2000L);
+    }
+
+    private static String connectCommand(String address) {
+        return "adb connect " + address + ":" + ADB_PORT;
     }
 
     private void openWifiSettings() {
@@ -922,24 +950,39 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private static String readAndroidProperty(String key) {
+    /** All system properties from one getprop run, as key -> value. */
+    private static Map<String, String> readAndroidProperties() {
+        Map<String, String> properties = new HashMap<>();
         Process process = null;
         try {
-            process = new ProcessBuilder("/system/bin/getprop", key)
+            process = new ProcessBuilder("/system/bin/getprop")
                     .redirectErrorStream(true)
                     .start();
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(process.getInputStream()))) {
-                String value = reader.readLine();
-                return value == null ? "" : value.trim();
+                // Each line reads "[key]: [value]".
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    int split = line.indexOf("]: [");
+                    if (line.startsWith("[") && split > 0 && line.endsWith("]")) {
+                        properties.put(line.substring(1, split),
+                                line.substring(split + 4, line.length() - 1).trim());
+                    }
+                }
             }
         } catch (Exception ignored) {
-            return "";
+            // Missing properties read as "".
         } finally {
             if (process != null) {
                 process.destroy();
             }
         }
+        return properties;
+    }
+
+    private static String property(Map<String, String> properties, String key) {
+        String value = properties.get(key);
+        return value == null ? "" : value;
     }
 
     private static boolean isLocalPortListening(int port) {
