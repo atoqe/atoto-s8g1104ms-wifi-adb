@@ -1,7 +1,7 @@
 # Quick start
 
 Ten minutes from a stock ATOTO S8G1104MS to an `adb shell` over Wi-Fi, using
-app version **1.3.0**. Park the car; the head unit needs to stay on (ACC on)
+app version **1.3.1**. Park the car; the head unit needs to stay on (ACC on)
 the whole time.
 
 ## You need
@@ -29,7 +29,7 @@ then turn it back off.
 
 **Upgrading?**
 
-- From **1.2.x**: just install 1.3.0. It updates the app in place and keeps
+- From **1.2.x** or **1.3.0**: just install 1.3.1. It updates the app in place and keeps
   your current Wi-Fi ADB setting.
 - From **1.1.0**: 1.2.0 and later are a separate app (new package name and
   signing key), so 1.1.0 stays installed next to it. Uninstall the old

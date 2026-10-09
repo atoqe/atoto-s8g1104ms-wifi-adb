@@ -27,7 +27,7 @@ firmware. All credit for the original technique goes to lrehmann.
 
 | Model | Android | Firmware | Result |
 | --- | --- | --- | --- |
-| S8G1104MS | 10 (API 29) | incremental `46117`, `com.syu.ms` 25.1119 (APP20251124 / System20251117) | Works (this fork, through 1.3.0) |
+| S8G1104MS | 10 (API 29) | incremental `46117`, `com.syu.ms` 25.1119 (APP20251124 / System20251117) | Works (this fork, through 1.3.1) |
 | S8G2A74MS | 10 | `QP1A.190711.020`, incremental `33515` | Works (upstream 1.0.0) |
 
 Other S8 models and FYT units may work: the app checks each step and tells you
@@ -109,11 +109,14 @@ addresses.
   that the unit is not on Wi-Fi), and a trusted Wi-Fi warning before turning
   it on. **On until reboot** now also clears the persistent port, so it means
   the same thing whatever the previous mode was.
-- App label `S8 Wi-Fi ADB (1104MS)`, version `1.3.0-s8g1104ms`.
+- 1.3.1: the controls no longer stay disabled if the head unit's system
+  service refuses or drops the connection, and the on-screen refresh does less
+  work (one property read per refresh, redraws only on change).
+- App label `S8 Wi-Fi ADB (1104MS)`, version `1.3.1-s8g1104ms`.
 
 Release 1.1.0 of this fork still used upstream's package name and a debug key.
 1.2.0 and later install as a separate app and update each other in place
-(1.3.0 installs over 1.2.x and keeps the current setting).
+(1.3.1 installs over 1.2.x and 1.3.0 and keeps the current setting).
 
 Release APKs from 1.2.0 on are signed with this certificate
 (`CN=atoto-s8g1104ms-wifi-adb`). Check a download with

@@ -25,7 +25,7 @@ Choose one method:
 Android may ask you to allow installs from the browser or file manager. Enable
 that permission only for the installation, then turn it back off.
 
-Upgrading from 1.2.x: install 1.3.0 over it. It updates in place (same
+Upgrading from 1.2.x or 1.3.0: install 1.3.1 over it. It updates in place (same
 package and signing key) and keeps the current Wi-Fi ADB setting.
 
 From 1.2.0 the app's package name is `com.atoqe.atoto.wifiadb`. Upstream's

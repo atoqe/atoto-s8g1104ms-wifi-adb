@@ -21,8 +21,8 @@ android {
         applicationId "com.atoqe.atoto.wifiadb"
         minSdk 23
         targetSdk 29
-        versionCode 5
-        versionName "1.3.0-s8g1104ms"
+        versionCode 6
+        versionName "1.3.1-s8g1104ms"
         manifestPlaceholders = [appLabel: "S8 Wi-Fi ADB (1104MS)"]
     }
 
